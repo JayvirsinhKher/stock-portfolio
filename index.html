@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FolioSyncWithJK — Personal Stock Portfolio Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #e2e8f0; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .card { background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 0.875rem; backdrop-filter: blur(12px); }
+    .tab-btn.active { background: #2563eb; color: #ffffff; border-color: #3b82f6; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800/80 bg-slate-950/90 sticky top-0 z-30 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+          <i class="fa-solid fa-chart-line text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-lg tracking-tight text-white">FolioSyncWithJK</h1>
+            <span id="modeBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Public Demo Data
+            </span>
+          </div>
+          <p id="syncStatusText" class="text-xs text-slate-400">Viewing sandbox dummy portfolio</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-3.5 py-1.5 rounded-lg text-xs font-medium transition">
+          <i class="fa-solid fa-gauge-high mr-1.5"></i>Dashboard
+        </button>
+        <button onclick="switchTab('holdings')" id="tab-holdings" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">
+          <i class="fa-solid fa-layer-group mr-1.5"></i>Holdings
+        </button>
+        <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">
+          <i class="fa-solid fa-list-check mr-1.5"></i>Transactions
+        </button>
+        <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">
+          <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>Sheet Sync
+        </button>
+      </nav>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button onclick="openOwnerModal()" id="ownerBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition flex items-center gap-1.5" title="Unlock Owner Google Sheet">
+          <i id="ownerLockIcon" class="fa-solid fa-lock text-amber-400"></i>
+          <span id="ownerBtnText">Owner Login</span>
+        </button>
+        <button onclick="syncActiveSource()" id="syncNowBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition flex items-center gap-1.5">
+          <i id="syncIcon" class="fa-solid fa-rotate"></i>
+          <span>Sync</span>
+        </button>
+        <button onclick="openTransactionModal()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition flex items-center gap-1.5 shadow-lg shadow-blue-600/20">
+          <i class="fa-solid fa-plus"></i>
+          <span>Add Trade</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-1 space-y-6">
+
+    <!-- KPI Summary Row (Always Visible) -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div class="card p-4">
+        <p class="text-xs text-slate-400 font-medium">Current Invested</p>
+        <p id="kpiInvested" class="text-xl font-bold text-white mono mt-1">₹0.00</p>
+        <p id="kpiActiveCount" class="text-[11px] text-slate-400 mt-1">0 active stocks</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-400 font-medium">Current Market Value</p>
+        <p id="kpiCurrentValue" class="text-xl font-bold text-white mono mt-1">₹0.00</p>
+        <p class="text-[11px] text-slate-400 mt-1">Live CMP valuation</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-400 font-medium">Unrealized P&L</p>
+        <p id="kpiUnrealized" class="text-xl font-bold mono mt-1">₹0.00</p>
+        <p id="kpiUnrealizedPct" class="text-[11px] mono mt-1">0.00%</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-400 font-medium">Realized Profit / Loss</p>
+        <p id="kpiRealized" class="text-xl font-bold mono mt-1">₹0.00</p>
+        <p class="text-[11px] text-slate-400 mt-1">From closed positions</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-400 font-medium">Net Total P&L</p>
+        <p id="kpiTotalPnL" class="text-xl font-bold mono mt-1">₹0.00</p>
+        <p class="text-[11px] text-slate-400 mt-1">Realized + Unrealized</p>
+      </div>
+    </section>
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="view-dashboard" class="space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card p-5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold text-white">Allocation by Stock</h2>
+            <span class="text-xs text-slate-400">By Current Value</span>
+          </div>
+          <div class="relative h-64 flex items-center justify-center">
+            <canvas id="allocationChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card p-5 lg:col-span-2 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold text-white">Invested vs Current Market Value</h2>
+            <span class="text-xs text-slate-400">Active Holdings</span>
+          </div>
+          <div class="relative h-64">
+            <canvas id="comparisonChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Holdings Preview -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-sm font-semibold text-white">Stock-Wise Summary</h2>
+            <p class="text-xs text-slate-400">Click any stock row to inspect individual Buy/Sell records</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-2.5 px-3">Stock</th>
+                <th class="py-2.5 px-3 text-right">Net Qty</th>
+                <th class="py-2.5 px-3 text-right">Avg Buy</th>
+                <th class="py-2.5 px-3 text-right">CMP (Edit)</th>
+                <th class="py-2.5 px-3 text-right">Invested</th>
+                <th class="py-2.5 px-3 text-right">Current Val</th>
+                <th class="py-2.5 px-3 text-right">Unrealized P&L</th>
+                <th class="py-2.5 px-3 text-right">Realized P&L</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardHoldingsBody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: HOLDINGS -->
+    <section id="view-holdings" class="hidden space-y-4">
+      <div class="card p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white">Stock-Wise Holdings & P&L Breakdown</h2>
+            <p class="text-xs text-slate-400">Update Current Market Price (CMP) inline or click a stock to view its buy/sell ledger</p>
+          </div>
+          <input id="holdingsSearch" oninput="renderAll()" type="text" placeholder="Filter ticker or name..." class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500" />
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-3 px-3">Ticker / Company</th>
+                <th class="py-3 px-3">Sector</th>
+                <th class="py-3 px-3 text-right">Bought</th>
+                <th class="py-3 px-3 text-right">Sold</th>
+                <th class="py-3 px-3 text-right">Net Qty</th>
+                <th class="py-3 px-3 text-right">Avg Buy</th>
+                <th class="py-3 px-3 text-right">Live CMP</th>
+                <th class="py-3 px-3 text-right">Invested</th>
+                <th class="py-3 px-3 text-right">Current Value</th>
+                <th class="py-3 px-3 text-right">Unrealized P&L</th>
+                <th class="py-3 px-3 text-right">Realized P&L</th>
+                <th class="py-3 px-3 text-center">History</th>
+              </tr>
+            </thead>
+            <tbody id="fullHoldingsBody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TRANSACTIONS -->
+    <section id="view-transactions" class="hidden space-y-4">
+      <div class="card p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white">All Buy / Sell Records</h2>
+            <p class="text-xs text-slate-400">Every entry synced with your active data source</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="txTypeFilter" onchange="renderAll()" class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white">
+              <option value="ALL">All Types</option>
+              <option value="BUY">BUY Only</option>
+              <option value="SELL">SELL Only</option>
+            </select>
+            <input id="txSearch" oninput="renderAll()" type="text" placeholder="Search ticker or notes..." class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-3 px-3">Date</th>
+                <th class="py-3 px-3">Ticker</th>
+                <th class="py-3 px-3">Company</th>
+                <th class="py-3 px-3">Type</th>
+                <th class="py-3 px-3 text-right">Qty</th>
+                <th class="py-3 px-3 text-right">Trade Price</th>
+                <th class="py-3 px-3 text-right">Total Value</th>
+                <th class="py-3 px-3">Notes</th>
+                <th class="py-3 px-3 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="transactionsBody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SHEET SYNC & MULTI-USER SETTINGS -->
+    <section id="view-settings" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Mode 1: Public Dummy Mode -->
+        <div class="card p-5 flex flex-col justify-between border border-slate-800">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Mode 1 • Default</span>
+              <i class="fa-solid fa-flask text-amber-400"></i>
+            </div>
+            <h3 class="text-base font-bold text-white mt-2">Public Demo Data</h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Shown to all public visitors by default so your private portfolio stays hidden. Visitors can test adding and deleting trades locally.
+            </p>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
+            <button onclick="resetDummyData()" class="text-xs text-slate-400 hover:text-white underline">Reset Demo Trades</button>
+            <button onclick="activateDummyMode()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition">
+              Switch to Demo Mode
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode 2: Owner Hardcoded Mode -->
+        <div class="card p-5 flex flex-col justify-between border border-blue-500/30">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Mode 2 • Site Owner</span>
+              <i class="fa-solid fa-user-shield text-blue-400"></i>
+            </div>
+            <h3 class="text-base font-bold text-white mt-2">Owner Personal Sheet</h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Uses your hardcoded Google Apps Script URL. Protected by your secret passkey so only you can load or edit your sheet.
+            </p>
+            <div class="mt-4 space-y-2">
+              <label class="block text-[11px] text-slate-400">Enter Owner Passkey (`OWNER_SECRET` in Code.gs)</label>
+              <input id="settingsOwnerKeyInput" type="password" placeholder="Enter your secret passkey..." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
+            <button onclick="logoutOwner()" class="text-xs text-rose-400 hover:text-rose-300">Lock / Logout</button>
+            <button onclick="unlockOwnerFromSettings()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition">
+              Unlock My Portfolio
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode 3: Custom Visitor Sheet -->
+        <div class="card p-5 flex flex-col justify-between border border-emerald-500/30">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Mode 3 • Custom User</span>
+              <i class="fa-solid fa-link text-emerald-400"></i>
+            </div>
+            <h3 class="text-base font-bold text-white mt-2">Bring Your Own Sheet</h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Other users can paste their own Google Apps Script Web App URL here to view and manage their own Google Sheet data.
+            </p>
+            <div class="mt-4 space-y-2">
+              <label class="block text-[11px] text-slate-400">Your Google Apps Script `/exec` URL</label>
+              <input id="customScriptUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              <input id="customScriptKeyInput" type="password" placeholder="Optional passkey (if set in your script)" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500" />
+            </div>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-end">
+            <button onclick="connectCustomUserSheet()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition">
+              Connect Custom Sheet
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL 1: ADD TRANSACTION -->
+  <div id="txModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="card max-w-md w-full p-6 border border-slate-700">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white">Add Buy / Sell Entry</h3>
+        <button onclick="closeTransactionModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="txForm" onsubmit="handleSaveTransaction(event)" class="space-y-3.5 mt-4 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Trade Type</label>
+            <select id="txType" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white font-semibold">
+              <option value="BUY">BUY</option>
+              <option value="SELL">SELL</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Trade Date</label>
+            <input id="txDate" type="date" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Stock Ticker</label>
+            <input id="txTicker" type="text" required placeholder="e.g. AAPL, INFY" oninput="autofillStockDetails(this.value)" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white uppercase" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Sector</label>
+            <input id="txSector" type="text" placeholder="e.g. Technology" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Company Name</label>
+          <input id="txName" type="text" required placeholder="e.g. Apple Inc." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Quantity</label>
+            <input id="txQty" type="number" step="any" min="0.0001" required placeholder="10" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white mono" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Trade Price</label>
+            <input id="txPrice" type="number" step="any" min="0.01" required placeholder="150.00" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white mono" />
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Current CMP</label>
+            <input id="txCmp" type="number" step="any" min="0.01" placeholder="Auto (Google Finance)" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white mono" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Notes (Optional)</label>
+          <input id="txNotes" type="text" placeholder="Long term hold / Q3 earnings" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
+        </div>
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-800">
+          <button type="button" onclick="closeTransactionModal()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">Cancel</button>
+          <button type="submit" id="saveTxBtn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: STOCK-WISE DRILLDOWN HISTORY -->
+  <div id="stockHistoryModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="card max-w-3xl w-full p-6 border border-slate-700 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div>
+          <h3 id="drilldownTitle" class="text-base font-bold text-white">Stock History</h3>
+          <p id="drilldownSubtitle" class="text-xs text-slate-400"></p>
+        </div>
+        <button onclick="closeStockHistoryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="overflow-y-auto my-4 flex-1">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400">
+              <th class="py-2 px-3">Date</th>
+              <th class="py-2 px-3">Type</th>
+              <th class="py-2 px-3 text-right">Qty</th>
+              <th class="py-2 px-3 text-right">Price</th>
+              <th class="py-2 px-3 text-right">Total</th>
+              <th class="py-2 px-3">Notes</th>
+              <th class="py-2 px-3 text-center">Delete</th>
+            </tr>
+          </thead>
+          <tbody id="drilldownBody" class="divide-y divide-slate-800/60"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: OWNER LOGIN -->
+  <div id="ownerModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="card max-w-sm w-full p-6 border border-slate-700">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-white"><i class="fa-solid fa-shield-halved text-blue-400 mr-2"></i>Owner Portfolio Access</h3>
+        <button onclick="closeOwnerModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-xs text-slate-400 mt-3">
+        Public visitors see dummy data by default. Enter your passkey to unlock and sync your hardcoded Google Sheet.
+      </p>
+      <div class="mt-4">
+        <label class="block text-xs text-slate-300 mb-1">Owner Passkey</label>
+        <input id="modalOwnerKeyInput" type="password" placeholder="Enter OWNER_SECRET..." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500" />
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <button onclick="closeOwnerModal()" class="px-3.5 py-1.5 rounded-lg text-xs bg-slate-800 text-slate-300">Cancel</button>
+        <button onclick="unlockOwnerFromModal()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white">Unlock & Sync</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl shadow-xl border text-xs font-medium transition-all"></div>
+
+  <script>
+    // ============================================================================
+    // 1. HARDCODED OWNER GOOGLE APPS SCRIPT WEB APP URL
+    // Replace the URL below with your own deployed Google Apps Script URL:
+    // ============================================================================
+    const OWNER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJdRhNmdsOUSW4-cgoiKqjy7o_ynO-RVzsTO8W8z4lpl9XOP9wk3LTBBi7Rkx3CHM/exec";
+
+    // Default sandbox transactions shown to public visitors
+    const DEFAULT_DUMMY_TRANSACTIONS = [
+      { id: 'DEMO-1', date: '2025-01-15', ticker: 'RELIANCE', name: 'Reliance Industries Ltd.', sector: 'Energy', type: 'BUY', qty: 25, price: 1240.50, cmp: 1315.00, notes: 'Core conglomerate hold' },
+      { id: 'DEMO-2', date: '2025-02-10', ticker: 'TCS', name: 'Tata Consultancy Services', sector: 'IT', type: 'BUY', qty: 15, price: 3850.00, cmp: 4120.00, notes: 'Long-term IT compounder' },
+      { id: 'DEMO-3', date: '2025-03-05', ticker: 'TCS', name: 'Tata Consultancy Services', sector: 'IT', type: 'SELL', qty: 5, price: 4050.00, cmp: 4120.00, notes: 'Partial profit booking' },
+      { id: 'DEMO-4', date: '2025-03-18', ticker: 'HDFCBANK', name: 'HDFC Bank Ltd.', sector: 'Banking', type: 'BUY', qty: 40, price: 1620.00, cmp: 1745.00, notes: 'Private banking leader' },
+      { id: 'DEMO-5', date: '2025-04-02', ticker: 'INFY', name: 'Infosys Ltd.', sector: 'IT', type: 'BUY', qty: 30, price: 1540.00, cmp: 1685.40, notes: 'Dividend + IT recovery play' }
+    ];
+
+    // Safe Storage Wrapper (prevents crash if Google Sites iframe blocks localStorage)
+    const SafeStorage = {
+      get(key) {
+        try { return localStorage.getItem(key); } catch (e) { return null; }
+      },
+      set(key, val) {
+        try { localStorage.setItem(key, val); } catch (e) {}
+      },
+      remove(key) {
+        try { localStorage.removeItem(key); } catch (e) {}
+      }
+    };
+
+    // App State
+    // mode: 'DUMMY' (default for visitors) | 'OWNER' (your sheet) | 'CUSTOM' (visitor's own sheet)
+    let state = {
+      mode: SafeStorage.get('folio_mode') || 'DUMMY',
+      ownerKey: SafeStorage.get('folio_owner_key') || '',
+      customUrl: SafeStorage.get('folio_custom_url') || '',
+      customKey: SafeStorage.get('folio_custom_key') || '',
+      transactions: [],
+      cmpMap: {}
+    };
+
+    let allocationChartInstance = null;
+    let comparisonChartInstance = null;
+
+    // ============================================================================
+    // 2. STRICT DATA SANITIZER (Fixes "undefined" or NaN issues after Sheet Sync)
+    // ============================================================================
+    function sanitizeTransaction(raw, index = 0) {
+      if (!raw || typeof raw !== 'object') return null;
+
+      // Support any casing from Google Sheets headers
+      const rawTicker = raw.ticker ?? raw.Ticker ?? raw.TICKER ?? raw.symbol ?? raw.Symbol ?? raw.stock ?? '';
+      const ticker = String(rawTicker).toUpperCase().trim();
+      if (!ticker || ticker === 'UNDEFINED') return null;
+
+      const qty = parseFloat(String(raw.qty ?? raw.Qty ?? raw.quantity ?? raw.Quantity ?? 0).replace(/[^0-9.-]/g, '')) || 0;
+      const price = parseFloat(String(raw.price ?? raw.Price ?? raw.rate ?? raw.Rate ?? 0).replace(/[^0-9.-]/g, '')) || 0;
+      const rawCmp = parseFloat(String(raw.cmp ?? raw.CMP ?? raw.ltp ?? price).replace(/[^0-9.-]/g, ''));
+      const cmp = (!isNaN(rawCmp) && rawCmp > 0) ? rawCmp : price;
+
+      const rawType = String(raw.type ?? raw.Type ?? raw.action ?? 'BUY').toUpperCase().trim();
+      const type = rawType === 'SELL' ? 'SELL' : 'BUY';
+
+      let dateStr = String(raw.date ?? raw.Date ?? new Date().toISOString().split('T')[0]);
+      if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+
+      return {
+        id: String(raw.id ?? raw.ID ?? ('TX-' + Date.now() + '-' + index)),
+        date: dateStr,
+        ticker: ticker,
+        name: String(raw.name ?? raw.Name ?? raw.company ?? ticker).trim(),
+        sector: String(raw.sector ?? raw.Sector ?? 'Other').trim(),
+        type: type,
+        qty: qty,
+        price: price,
+        cmp: cmp,
+        notes: String(raw.notes ?? raw.Notes ?? raw.remarks ?? '').trim()
+      };
+    }
+
+    // ============================================================================
+    // 3. INITIALIZATION & ROUTING BETWEEN MODES
+    // ============================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('customScriptUrlInput').value = state.customUrl;
+      document.getElementById('customScriptKeyInput').value = state.customKey;
+      document.getElementById('settingsOwnerKeyInput').value = state.ownerKey;
+
+      // Always verify mode integrity on load
+      if (state.mode === 'OWNER' && state.ownerKey) {
+        syncFromSheet(OWNER_SCRIPT_URL, state.ownerKey, 'OWNER');
+      } else if (state.mode === 'CUSTOM' && state.customUrl) {
+        syncFromSheet(state.customUrl, state.customKey, 'CUSTOM');
+      } else {
+        loadDummyData();
+      }
+    });
+
+    function loadDummyData() {
+      state.mode = 'DUMMY';
+      SafeStorage.set('folio_mode', 'DUMMY');
+
+      const savedDummy = SafeStorage.get('folio_dummy_tx');
+      let rawList = DEFAULT_DUMMY_TRANSACTIONS;
+      if (savedDummy) {
+        try { rawList = JSON.parse(savedDummy); } catch (e) { rawList = DEFAULT_DUMMY_TRANSACTIONS; }
+      }
+
+      state.transactions = rawList.map((r, i) => sanitizeTransaction(r, i)).filter(Boolean);
+      state.cmpMap = {};
+      state.transactions.forEach(t => { state.cmpMap[t.ticker] = t.cmp || t.price; });
+
+      updateHeaderUI('DUMMY', 'Viewing sandbox dummy portfolio (Safe for public visitors)');
+      renderAll();
+    }
+
+    function resetDummyData() {
+      SafeStorage.remove('folio_dummy_tx');
+      loadDummyData();
+      showToast('Demo portfolio reset to default sample trades', 'info');
+    }
+
+    function activateDummyMode() {
+      loadDummyData();
+      showToast('Switched to Public Demo Mode', 'info');
+    }
+
+    // ============================================================================
+    // 4. GOOGLE SHEET SYNC (GET & POST WITH CACHE-BUSTING)
+    // ============================================================================
+    function getActiveEndpoint() {
+      if (state.mode === 'OWNER') {
+        return { url: OWNER_SCRIPT_URL, key: state.ownerKey };
+      }
+      if (state.mode === 'CUSTOM') {
+        return { url: state.customUrl, key: state.customKey };
+      }
+      return null;
+    }
+
+    async function syncActiveSource() {
+      if (state.mode === 'DUMMY') {
+        loadDummyData();
+        showToast('Refreshed local demo data', 'info');
+        return;
+      }
+      const ep = getActiveEndpoint();
+      if (ep && ep.url) {
+        await syncFromSheet(ep.url, ep.key, state.mode);
+      }
+    }
+
+    async function syncFromSheet(scriptUrl, secretKey, targetMode) {
+      if (!scriptUrl || scriptUrl.includes('YOUR_DEPLOYED_SCRIPT_ID')) {
+        showToast('Owner Script URL not replaced in index.html yet! Showing Demo Data.', 'error');
+        loadDummyData();
+        return;
+      }
+
+      const syncIcon = document.getElementById('syncIcon');
+      syncIcon.classList.add('fa-spin');
+      updateHeaderUI(targetMode, 'Syncing live records from Google Sheet...');
+
+      try {
+        // Cache-busting query string (?t=...) prevents Google Sites from serving stale data
+        const sep = scriptUrl.includes('?') ? '&' : '?';
+        const fetchUrl = `${scriptUrl}${sep}key=${encodeURIComponent(secretKey || '')}&t=${Date.now()}`;
+
+        const response = await fetch(fetchUrl, { method: 'GET', redirect: 'follow' });
+        const result = await response.json();
+
+        if (result && result.status === 'unauthorized') {
+          showToast('Invalid Owner Passkey! Reverting to Public Demo Data.', 'error');
+          logoutOwner();
+          return;
+        }
+
+        const rawRows = Array.isArray(result) ? result : (result.data || result.transactions || []);
+        const cleanRows = rawRows.map((r, idx) => sanitizeTransaction(r, idx)).filter(Boolean);
+
+        state.mode = targetMode;
+        SafeStorage.set('folio_mode', targetMode);
+        state.transactions = cleanRows;
+
+        state.cmpMap = {};
+        cleanRows.forEach(t => {
+          state.cmpMap[t.ticker] = t.cmp > 0 ? t.cmp : t.price;
+        });
+
+        updateHeaderUI(targetMode, `Synced ${cleanRows.length} records from Google Sheet`);
+        renderAll();
+        showToast(`Synced ${cleanRows.length} records successfully`, 'success');
+      } catch (err) {
+        console.error('Sheet Sync Error:', err);
+        showToast('Could not reach Google Sheet. Check Web App URL & "Anyone" permissions.', 'error');
+        updateHeaderUI(targetMode, 'Sync error — check connection');
+      } finally {
+        syncIcon.classList.remove('fa-spin');
+      }
+    }
+
+    async function postToSheet(payload) {
+      const ep = getActiveEndpoint();
+      if (!ep || !ep.url) return false;
+
+      const bodyData = JSON.stringify({ ...payload, key: ep.key || '' });
+      // Using text/plain prevents CORS preflight failure on Google Apps Script
+      const response = await fetch(ep.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: bodyData,
+        redirect: 'follow'
+      });
+      const resJson = await response.json();
+      if (resJson.status === 'unauthorized') {
+        throw new Error('Unauthorized Passkey');
+      }
+      return resJson.status === 'success';
+    }
+
+    // ============================================================================
+    // 5. OWNER & CUSTOM USER AUTHENTICATION HANDLERS
+    // ============================================================================
+    function openOwnerModal() {
+      document.getElementById('modalOwnerKeyInput').value = state.ownerKey;
+      document.getElementById('ownerModal').classList.remove('hidden');
+      document.getElementById('ownerModal').classList.add('flex');
+    }
+
+    function closeOwnerModal() {
+      document.getElementById('ownerModal').classList.add('hidden');
+      document.getElementById('ownerModal').classList.remove('flex');
+    }
+
+    function unlockOwnerFromModal() {
+      const key = document.getElementById('modalOwnerKeyInput').value.trim();
+      if (!key) {
+        showToast('Please enter your Owner Passkey', 'error');
+        return;
+      }
+      state.ownerKey = key;
+      SafeStorage.set('folio_owner_key', key);
+      document.getElementById('settingsOwnerKeyInput').value = key;
+      closeOwnerModal();
+      syncFromSheet(OWNER_SCRIPT_URL, key, 'OWNER');
+    }
+
+    function unlockOwnerFromSettings() {
+      const key = document.getElementById('settingsOwnerKeyInput').value.trim();
+      if (!key) {
+        showToast('Please enter your Owner Passkey', 'error');
+        return;
+      }
+      state.ownerKey = key;
+      SafeStorage.set('folio_owner_key', key);
+      syncFromSheet(OWNER_SCRIPT_URL, key, 'OWNER');
+    }
+
+    function logoutOwner() {
+      state.ownerKey = '';
+      SafeStorage.remove('folio_owner_key');
+      document.getElementById('settingsOwnerKeyInput').value = '';
+      loadDummyData();
+      showToast('Owner logged out. Showing public demo data.', 'info');
+    }
+
+    function connectCustomUserSheet() {
+      const url = document.getElementById('customScriptUrlInput').value.trim();
+      const key = document.getElementById('customScriptKeyInput').value.trim();
+      if (!url || !url.startsWith('https://script.google.com')) {
+        showToast('Please enter a valid Google Apps Script Web App URL', 'error');
+        return;
+      }
+      state.customUrl = url;
+      state.customKey = key;
+      SafeStorage.set('folio_custom_url', url);
+      SafeStorage.set('folio_custom_key', key);
+      syncFromSheet(url, key, 'CUSTOM');
+    }
+
+    function updateHeaderUI(mode, statusText) {
+      const badge = document.getElementById('modeBadge');
+      const statusEl = document.getElementById('syncStatusText');
+      const lockIcon = document.getElementById('ownerLockIcon');
+      const ownerBtnText = document.getElementById('ownerBtnText');
+
+      statusEl.textContent = statusText;
+
+      if (mode === 'OWNER') {
+        badge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30';
+        badge.textContent = 'Owner Live Sheet';
+        lockIcon.className = 'fa-solid fa-lock-open text-emerald-400';
+        ownerBtnText.textContent = 'Owner Unlocked';
+      } else if (mode === 'CUSTOM') {
+        badge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        badge.textContent = 'Custom User Sheet';
+        lockIcon.className = 'fa-solid fa-lock text-amber-400';
+        ownerBtnText.textContent = 'Owner Login';
+      } else {
+        badge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        badge.textContent = 'Public Demo Data';
+        lockIcon.className = 'fa-solid fa-lock text-amber-400';
+        ownerBtnText.textContent = 'Owner Login';
+      }
+    }
+
+    // ============================================================================
+    // 6. PORTFOLIO ENGINE (AVERAGE COST, REALIZED & UNREALIZED P&L)
+    // ============================================================================
+    function calculatePortfolio() {
+      const holdingsMap = {};
+      // Sort chronologically so average buy price is accurate on sell trades
+      const sortedTx = [...state.transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      sortedTx.forEach(tx => {
+        const t = sanitizeTransaction(tx);
+        if (!t) return;
+
+        if (!holdingsMap[t.ticker]) {
+          holdingsMap[t.ticker] = {
+            ticker: t.ticker,
+            name: t.name,
+            sector: t.sector,
+            boughtQty: 0,
+            soldQty: 0,
+            netQty: 0,
+            totalCostPool: 0,
+            avgBuyPrice: 0,
+            realizedPnL: 0,
+            cmp: state.cmpMap[t.ticker] || t.cmp || t.price,
+            records: []
+          };
+        }
+
+        const h = holdingsMap[t.ticker];
+        h.name = t.name || h.name;
+        h.sector = t.sector || h.sector;
+        h.records.push(t);
+
+        if (t.type === 'BUY') {
+          h.boughtQty += t.qty;
+          h.netQty += t.qty;
+          h.totalCostPool += (t.qty * t.price);
+          h.avgBuyPrice = h.netQty > 0 ? (h.totalCostPool / h.netQty) : 0;
+        } else if (t.type === 'SELL') {
+          const sellQty = Math.min(t.qty, h.netQty > 0 ? h.netQty : t.qty);
+          const costBasis = sellQty * h.avgBuyPrice;
+          h.realizedPnL += (t.qty * t.price) - costBasis;
+          h.soldQty += t.qty;
+          h.netQty = Math.max(0, h.netQty - t.qty);
+          h.totalCostPool = h.netQty * h.avgBuyPrice;
+        }
+      });
+
+      const holdings = Object.values(holdingsMap).map(h => {
+        const cmp = state.cmpMap[h.ticker] ?? h.cmp ?? h.avgBuyPrice;
+        const invested = h.netQty * h.avgBuyPrice;
+        const currentValue = h.netQty * cmp;
+        const unrealizedPnL = currentValue - invested;
+        const unrealizedPct = invested > 0 ? (unrealizedPnL / invested) * 100 : 0;
+        return { ...h, cmp, invested, currentValue, unrealizedPnL, unrealizedPct };
+      });
+
+      return holdings;
+    }
+
+    // ============================================================================
+    // 7. ADD / DELETE TRANSACTIONS & CMP UPDATES
+    // ============================================================================
+    function openTransactionModal(prefillTicker = '') {
+      document.getElementById('txForm').reset();
+      document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+      if (prefillTicker) {
+        document.getElementById('txTicker').value = prefillTicker;
+        autofillStockDetails(prefillTicker);
+      }
+      document.getElementById('txModal').classList.remove('hidden');
+      document.getElementById('txModal').classList.add('flex');
+    }
+
+    function closeTransactionModal() {
+      document.getElementById('txModal').classList.add('hidden');
+      document.getElementById('txModal').classList.remove('flex');
+    }
+
+    function autofillStockDetails(tickerInput) {
+      const clean = String(tickerInput).toUpperCase().trim();
+      const match = state.transactions.find(t => t.ticker === clean);
+      if (match) {
+        document.getElementById('txName').value = match.name;
+        document.getElementById('txSector').value = match.sector;
+        document.getElementById('txCmp').value = state.cmpMap[clean] || match.cmp || match.price;
+      }
+    }
+
+    async function handleSaveTransaction(e) {
+      e.preventDefault();
+      const newTx = sanitizeTransaction({
+        id: 'TX-' + Date.now(),
+        type: document.getElementById('txType').value,
+        date: document.getElementById('txDate').value,
+        ticker: document.getElementById('txTicker').value,
+        name: document.getElementById('txName').value,
+        sector: document.getElementById('txSector').value || 'Other',
+        qty: document.getElementById('txQty').value,
+        price: document.getElementById('txPrice').value,
+        cmp: document.getElementById('txCmp').value || 0,
+        notes: document.getElementById('txNotes').value
+      });
+
+      // Validate SELL quantity against current holdings
+      if (newTx.type === 'SELL') {
+        const holdings = calculatePortfolio();
+        const existing = holdings.find(h => h.ticker === newTx.ticker);
+        const available = existing ? existing.netQty : 0;
+        if (newTx.qty > available) {
+          showToast(`Cannot sell ${newTx.qty} shares of ${newTx.ticker}. You only hold ${available}.`, 'error');
+          return;
+        }
+      }
+
+      const btn = document.getElementById('saveTxBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        state.cmpMap[newTx.ticker] = newTx.cmp;
+
+        if (state.mode === 'DUMMY') {
+          state.transactions.push(newTx);
+          SafeStorage.set('folio_dummy_tx', JSON.stringify(state.transactions));
+          renderAll();
+          closeTransactionModal();
+          showToast('Trade added to Demo Portfolio', 'success');
+        } else {
+          await postToSheet({ action: 'ADD', transaction: newTx });
+          closeTransactionModal();
+          // Re-sync directly from Sheet so state is 100% consistent
+          await syncActiveSource();
+        }
+      } catch (err) {
+        showToast('Failed to save to Google Sheet: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Transaction';
+      }
+    }
+
+    async function deleteTransaction(id) {
+      if (!confirm('Delete this transaction record?')) return;
+
+      if (state.mode === 'DUMMY') {
+        state.transactions = state.transactions.filter(t => t.id !== id);
+        SafeStorage.set('folio_dummy_tx', JSON.stringify(state.transactions));
+        renderAll();
+        closeStockHistoryModal();
+        showToast('Record deleted from Demo Portfolio', 'info');
+      } else {
+        try {
+          showToast('Deleting record from Google Sheet...', 'info');
+          await postToSheet({ action: 'DELETE', id: id });
+          closeStockHistoryModal();
+          await syncActiveSource();
+        } catch (err) {
+          showToast('Delete failed: ' + err.message, 'error');
+        }
+      }
+    }
+
+    async function updateStockCmp(ticker, val) {
+      const newCmp = parseFloat(val);
+      if (isNaN(newCmp) || newCmp <= 0) return;
+
+      state.cmpMap[ticker] = newCmp;
+      state.transactions.forEach(t => {
+        if (t.ticker === ticker) t.cmp = newCmp;
+      });
+
+      if (state.mode === 'DUMMY') {
+        SafeStorage.set('folio_dummy_tx', JSON.stringify(state.transactions));
+        renderAll();
+      } else {
+        renderAll();
+        try {
+          await postToSheet({ action: 'UPDATE_CMP', ticker, cmp: newCmp });
+          showToast(`Updated ${ticker} CMP in Google Sheet`, 'success');
+        } catch (e) {
+          showToast('Updated locally, but Sheet sync failed', 'error');
+        }
+      }
+    }
+
+    // ============================================================================
+    // 8. RENDERING TABLES, CHARTS & DRILLDOWN MODAL
+    // ============================================================================
+    function fmtMoney(n) {
+      const val = Number(n) || 0;
+      const sign = val < 0 ? '-' : '';
+      return sign + '₹' + Math.abs(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderAll() {
+      const holdings = calculatePortfolio();
+      const activeHoldings = holdings.filter(h => h.netQty > 0);
+
+      const totalInvested = activeHoldings.reduce((s, h) => s + h.invested, 0);
+      const totalCurrent = activeHoldings.reduce((s, h) => s + h.currentValue, 0);
+      const totalUnrealized = totalCurrent - totalInvested;
+      const unrealizedPct = totalInvested > 0 ? (totalUnrealized / totalInvested) * 100 : 0;
+      const totalRealized = holdings.reduce((s, h) => s + h.realizedPnL, 0);
+      const netTotalPnL = totalUnrealized + totalRealized;
+
+      document.getElementById('kpiInvested').textContent = fmtMoney(totalInvested);
+      document.getElementById('kpiActiveCount').textContent = `${activeHoldings.length} active stocks (${state.transactions.length} trades)`;
+      document.getElementById('kpiCurrentValue').textContent = fmtMoney(totalCurrent);
+
+      const uEl = document.getElementById('kpiUnrealized');
+      uEl.textContent = (totalUnrealized >= 0 ? '+' : '') + fmtMoney(totalUnrealized);
+      uEl.className = `text-xl font-bold mono mt-1 ${totalUnrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+      const uPctEl = document.getElementById('kpiUnrealizedPct');
+      uPctEl.textContent = `${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(2)}%`;
+      uPctEl.className = `text-[11px] mono mt-1 ${unrealizedPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+      const rEl = document.getElementById('kpiRealized');
+      rEl.textContent = (totalRealized >= 0 ? '+' : '') + fmtMoney(totalRealized);
+      rEl.className = `text-xl font-bold mono mt-1 ${totalRealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+      const netEl = document.getElementById('kpiTotalPnL');
+      netEl.textContent = (netTotalPnL >= 0 ? '+' : '') + fmtMoney(netTotalPnL);
+      netEl.className = `text-xl font-bold mono mt-1 ${netTotalPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+      renderDashboardTable(holdings);
+      renderFullHoldingsTable(holdings);
+      renderTransactionsTable();
+      renderCharts(activeHoldings);
+    }
+
+    function renderDashboardTable(holdings) {
+      const tbody = document.getElementById('dashboardHoldingsBody');
+      if (!holdings.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-slate-500">No holdings found. Click "Add Trade" to begin.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = holdings.map(h => `
+        <tr onclick="openStockHistoryModal('${h.ticker}')" class="hover:bg-slate-800/50 cursor-pointer transition">
+          <td class="py-3 px-3">
+            <div class="font-bold text-white">${h.ticker}</div>
+            <div class="text-[11px] text-slate-400">${h.name}</div>
+          </td>
+          <td class="py-3 px-3 text-right mono">${h.netQty}</td>
+          <td class="py-3 px-3 text-right mono">${fmtMoney(h.avgBuyPrice)}</td>
+          <td class="py-3 px-3 text-right" onclick="event.stopPropagation()">
+            <input type="number" step="any" value="${h.cmp}" onchange="updateStockCmp('${h.ticker}', this.value)"
+              class="w-20 text-right px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white mono text-xs focus:border-blue-500" />
+          </td>
+          <td class="py-3 px-3 text-right mono">${fmtMoney(h.invested)}</td>
+          <td class="py-3 px-3 text-right mono font-semibold text-white">${fmtMoney(h.currentValue)}</td>
+          <td class="py-3 px-3 text-right mono ${h.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+            ${h.unrealizedPnL >= 0 ? '+' : ''}${fmtMoney(h.unrealizedPnL)} (${h.unrealizedPct.toFixed(1)}%)
+          </td>
+          <td class="py-3 px-3 text-right mono ${h.realizedPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+            ${h.realizedPnL >= 0 ? '+' : ''}${fmtMoney(h.realizedPnL)}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderFullHoldingsTable(holdings) {
+      const q = (document.getElementById('holdingsSearch')?.value || '').toLowerCase();
+      const filtered = holdings.filter(h => h.ticker.toLowerCase().includes(q) || h.name.toLowerCase().includes(q));
+      const tbody = document.getElementById('fullHoldingsBody');
+
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="12" class="py-6 text-center text-slate-500">No matching stocks.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(h => `
+        <tr class="hover:bg-slate-800/40 transition">
+          <td class="py-3 px-3">
+            <div class="font-bold text-white">${h.ticker}</div>
+            <div class="text-[11px] text-slate-400">${h.name}</div>
+          </td>
+          <td class="py-3 px-3 text-slate-300">${h.sector}</td>
+          <td class="py-3 px-3 text-right mono text-emerald-400">${h.boughtQty}</td>
+          <td class="py-3 px-3 text-right mono text-amber-400">${h.soldQty}</td>
+          <td class="py-3 px-3 text-right mono font-bold text-white">${h.netQty}</td>
+          <td class="py-3 px-3 text-right mono">${fmtMoney(h.avgBuyPrice)}</td>
+          <td class="py-3 px-3 text-right">
+            <input type="number" step="any" value="${h.cmp}" onchange="updateStockCmp('${h.ticker}', this.value)"
+              class="w-20 text-right px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white mono text-xs" />
+          </td>
+          <td class="py-3 px-3 text-right mono">${fmtMoney(h.invested)}</td>
+          <td class="py-3 px-3 text-right mono font-semibold text-white">${fmtMoney(h.currentValue)}</td>
+          <td class="py-3 px-3 text-right mono ${h.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+            ${h.unrealizedPnL >= 0 ? '+' : ''}${fmtMoney(h.unrealizedPnL)}
+          </td>
+          <td class="py-3 px-3 text-right mono ${h.realizedPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+            ${h.realizedPnL >= 0 ? '+' : ''}${fmtMoney(h.realizedPnL)}
+          </td>
+          <td class="py-3 px-3 text-center">
+            <button onclick="openStockHistoryModal('${h.ticker}')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white text-[11px] transition">
+              Records (${h.records.length})
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderTransactionsTable() {
+      const typeFilter = document.getElementById('txTypeFilter')?.value || 'ALL';
+      const q = (document.getElementById('txSearch')?.value || '').toLowerCase();
+
+      const filtered = [...state.transactions]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .filter(t => (typeFilter === 'ALL' || t.type === typeFilter))
+        .filter(t => t.ticker.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || t.notes.toLowerCase().includes(q));
+
+      const tbody = document.getElementById('transactionsBody');
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-slate-500">No transactions found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(t => `
+        <tr class="hover:bg-slate-800/40 transition">
+          <td class="py-3 px-3 mono text-slate-300">${t.date}</td>
+          <td class="py-3 px-3 font-bold text-white">${t.ticker}</td>
+          <td class="py-3 px-3 text-slate-300">${t.name}</td>
+          <td class="py-3 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}">${t.type}</span>
+          </td>
+          <td class="py-3 px-3 text-right mono">${t.qty}</td>
+          <td class="py-3 px-3 text-right mono">${fmtMoney(t.price)}</td>
+          <td class="py-3 px-3 text-right mono font-semibold text-white">${fmtMoney(t.qty * t.price)}</td>
+          <td class="py-3 px-3 text-slate-400">${t.notes || '-'}</td>
+          <td class="py-3 px-3 text-center">
+            <button onclick="deleteTransaction('${t.id}')" class="text-rose-400 hover:text-rose-300 px-2 py-1" title="Delete Entry">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openStockHistoryModal(ticker) {
+      const holdings = calculatePortfolio();
+      const stock = holdings.find(h => h.ticker === ticker);
+      if (!stock) return;
+
+      document.getElementById('drilldownTitle').textContent = `${stock.ticker} — ${stock.name}`;
+      document.getElementById('drilldownSubtitle').textContent = `Net Qty: ${stock.netQty} | Avg Buy: ${fmtMoney(stock.avgBuyPrice)} | Unrealized: ${fmtMoney(stock.unrealizedPnL)} | Realized: ${fmtMoney(stock.realizedPnL)}`;
+
+      const tbody = document.getElementById('drilldownBody');
+      tbody.innerHTML = stock.records.map(r => `
+        <tr class="border-b border-slate-800/60">
+          <td class="py-2.5 px-3 mono">${r.date}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}">${r.type}</span>
+          </td>
+          <td class="py-2.5 px-3 text-right mono">${r.qty}</td>
+          <td class="py-2.5 px-3 text-right mono">${fmtMoney(r.price)}</td>
+          <td class="py-2.5 px-3 text-right mono">${fmtMoney(r.qty * r.price)}</td>
+          <td class="py-2.5 px-3 text-slate-400">${r.notes || '-'}</td>
+          <td class="py-2.5 px-3 text-center">
+            <button onclick="deleteTransaction('${r.id}')" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash-can"></i></button>
+          </td>
+        </tr>
+      `).join('');
+
+      document.getElementById('stockHistoryModal').classList.remove('hidden');
+      document.getElementById('stockHistoryModal').classList.add('flex');
+    }
+
+    function closeStockHistoryModal() {
+      document.getElementById('stockHistoryModal').classList.add('hidden');
+      document.getElementById('stockHistoryModal').classList.remove('flex');
+    }
+
+    function renderCharts(activeHoldings) {
+      const labels = activeHoldings.map(h => h.ticker);
+      const currentVals = activeHoldings.map(h => Number(h.currentValue.toFixed(2)));
+      const investedVals = activeHoldings.map(h => Number(h.invested.toFixed(2)));
+
+      const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
+      if (allocationChartInstance) allocationChartInstance.destroy();
+      allocationChartInstance = new Chart(ctxAlloc, {
+        type: 'doughnut',
+        data: {
+          labels: labels.length ? labels : ['No Active Holdings'],
+          datasets: [{
+            data: currentVals.length ? currentVals : [1],
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } }
+        }
+      });
+
+      const ctxComp = document.getElementById('comparisonChart').getContext('2d');
+      if (comparisonChartInstance) comparisonChartInstance.destroy();
+      comparisonChartInstance = new Chart(ctxComp, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Invested', data: investedVals, backgroundColor: '#475569', borderRadius: 6 },
+            { label: 'Current Value', data: currentVals, backgroundColor: '#3b82f6', borderRadius: 6 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+          },
+          plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } }
+        }
+      });
+    }
+
+    // Navigation & Toast Helpers
+    function switchTab(tabName) {
+      ['dashboard', 'holdings', 'transactions', 'settings'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tabName);
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === tabName);
+      });
+    }
+
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast');
+      const colors = {
+        success: 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200',
+        error: 'bg-rose-950/90 border-rose-500/40 text-rose-200',
+        info: 'bg-slate-900/95 border-slate-700 text-slate-200'
+      };
+      el.className = `fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl shadow-xl border text-xs font-medium ${colors[type] || colors.info}`;
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 3500);
+    }
+  </script>
+</body>
+</html>
