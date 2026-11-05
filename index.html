@@ -34,29 +34,32 @@
               Public Demo Data
             </span>
           </div>
-          <p id="syncStatusText" class="text-xs text-slate-400">Viewing sandbox dummy portfolio</p>
+          <p id="syncStatusText" class="text-xs text-slate-400 mt-0.5">Viewing sandbox dummy portfolio</p>
         </div>
       </div>
 
       <!-- Navigation Tabs -->
-      <nav class="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
-        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-3.5 py-1.5 rounded-lg text-xs font-medium transition">
+      <nav class="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap">
           <i class="fa-solid fa-gauge-high mr-1.5"></i>Dashboard
         </button>
-        <button onclick="switchTab('holdings')" id="tab-holdings" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">
+        <button onclick="switchTab('holdings')" id="tab-holdings" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition whitespace-nowrap">
           <i class="fa-solid fa-layer-group mr-1.5"></i>Holdings
         </button>
-        <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">
+        <button onclick="switchTab('lots')" id="tab-lots" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition whitespace-nowrap">
+          <i class="fa-solid fa-boxes-stacked mr-1.5"></i>Lot Tracking
+        </button>
+        <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition whitespace-nowrap">
           <i class="fa-solid fa-list-check mr-1.5"></i>Transactions
         </button>
-        <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition">
+        <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition whitespace-nowrap">
           <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>Sheet Sync
         </button>
       </nav>
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2">
-        <button onclick="openOwnerModal()" id="ownerBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition flex items-center gap-1.5" title="Unlock Owner Google Sheet">
+        <button onclick="openOwnerModal()" id="ownerBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 transition flex items-center gap-1.5" title="Unlock Owner Sheet">
           <i id="ownerLockIcon" class="fa-solid fa-lock text-amber-400"></i>
           <span id="ownerBtnText">Owner Login</span>
         </button>
@@ -190,7 +193,54 @@
       </div>
     </section>
 
-    <!-- TAB 3: TRANSACTIONS -->
+    <!-- TAB 3: LOT TRACKING -->
+    <section id="view-lots" class="hidden space-y-4">
+      <div class="card p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white"><i class="fa-solid fa-boxes-stacked mr-2 text-blue-400"></i>Lot-Wise Purchase & Target Tracking</h2>
+            <p class="text-xs text-slate-400">Sorted by Ticker (A-Z) and Buy Price (Low to High).</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Stock Filter Dropdown -->
+            <select id="lotStockFilter" onchange="renderLotsTable()" class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white">
+              <option value="ALL">All Stocks</option>
+            </select>
+            <!-- Sort Toggle Button -->
+            <button onclick="toggleLotSort()" id="lotSortBtn" class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-arrow-down-a-z text-blue-400"></i>
+              <span id="lotSortLabel">Ticker: A-Z</span>
+            </button>
+            <button onclick="openTransactionModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition">
+              <i class="fa-solid fa-plus mr-1"></i>Add New Buy Lot
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-3 px-3">Lot ID & Date</th>
+                <th class="py-3 px-3">Stock Ticker</th>
+                <th class="py-3 px-3 text-right">Original Qty</th>
+                <th class="py-3 px-3 text-right">Remaining Qty</th>
+                <th class="py-3 px-3 text-right">Buy Price</th>
+                <th class="py-3 px-3 text-right">Target % (Edit)</th>
+                <th class="py-3 px-3 text-right">Target Price</th>
+                <th class="py-3 px-3 text-right">Target Profit (₹)</th>
+                <th class="py-3 px-3 text-right">Current CMP</th>
+                <th class="py-3 px-3 text-right">Unrealized P&L</th>
+                <th class="py-3 px-3 text-right">Realized P&L</th>
+                <th class="py-3 px-3 text-center">Status / Sell</th>
+              </tr>
+            </thead>
+            <tbody id="lotsTableBody" class="divide-y divide-slate-800/60"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: TRANSACTIONS -->
     <section id="view-transactions" class="hidden space-y-4">
       <div class="card p-5">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -228,7 +278,7 @@
       </div>
     </section>
 
-    <!-- TAB 4: SHEET SYNC & MULTI-USER SETTINGS -->
+    <!-- TAB 5: SHEET SYNC & SETTINGS -->
     <section id="view-settings" class="hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -252,50 +302,35 @@
           </div>
         </div>
 
-        <!-- Mode 2: Owner Hardcoded Mode -->
-        <div class="card p-5 flex flex-col justify-between border border-blue-500/30">
+        <!-- Mode 2: Custom User / Owner Preconfigured Sheet (With Clear Button & Flexible URL) -->
+        <div class="card p-5 flex flex-col justify-between border border-emerald-500/30 lg:col-span-2">
           <div>
             <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Mode 2 • Site Owner</span>
-              <i class="fa-solid fa-user-shield text-blue-400"></i>
+              <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Mode 2 • Google Sheet Sync</span>
+              <i class="fa-solid fa-link text-emerald-400"></i>
             </div>
-            <h3 class="text-base font-bold text-white mt-2">Owner Personal Sheet</h3>
+            <h3 class="text-base font-bold text-white mt-2">Sheet Configuration</h3>
             <p class="text-xs text-slate-400 mt-1">
-              Uses your hardcoded Google Apps Script URL. Protected by your secret passkey so only you can load or edit your sheet.
+              Preconfigured with your default custom URL. Other users can clear it to paste their own, or you can just enter your password below.
             </p>
-            <div class="mt-4 space-y-2">
-              <label class="block text-[11px] text-slate-400">Enter Owner Passkey (`OWNER_SECRET` in Code.gs)</label>
-              <input id="settingsOwnerKeyInput" type="password" placeholder="Enter your secret passkey..." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500" />
+            <div class="mt-4 space-y-3">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-[11px] text-slate-400">Google Apps Script URL</label>
+                  <button onclick="clearCustomUrl()" class="text-[10px] text-rose-400 hover:text-rose-300 underline font-medium">Clear URL</button>
+                </div>
+                <input id="customScriptUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Portfolio Password / Passkey</label>
+                <input id="customScriptKeyInput" type="password" placeholder="Enter password/passkey..." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500" />
+              </div>
             </div>
           </div>
           <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
-            <button onclick="logoutOwner()" class="text-xs text-rose-400 hover:text-rose-300">Lock / Logout</button>
-            <button onclick="unlockOwnerFromSettings()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition">
-              Unlock My Portfolio
-            </button>
-          </div>
-        </div>
-
-        <!-- Mode 3: Custom Visitor Sheet -->
-        <div class="card p-5 flex flex-col justify-between border border-emerald-500/30">
-          <div>
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Mode 3 • Custom User</span>
-              <i class="fa-solid fa-link text-emerald-400"></i>
-            </div>
-            <h3 class="text-base font-bold text-white mt-2">Bring Your Own Sheet</h3>
-            <p class="text-xs text-slate-400 mt-1">
-              Other users can paste their own Google Apps Script Web App URL here to view and manage their own Google Sheet data.
-            </p>
-            <div class="mt-4 space-y-2">
-              <label class="block text-[11px] text-slate-400">Your Google Apps Script `/exec` URL</label>
-              <input id="customScriptUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500" />
-              <input id="customScriptKeyInput" type="password" placeholder="Optional passkey (if set in your script)" class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-emerald-500" />
-            </div>
-          </div>
-          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-end">
-            <button onclick="connectCustomUserSheet()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition">
-              Connect Custom Sheet
+            <button onclick="logoutOwner()" class="text-xs text-rose-400 hover:text-rose-300">Disconnect / Lock</button>
+            <button onclick="connectCustomUserSheet()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition">
+              Connect & Sync Sheet
             </button>
           </div>
         </div>
@@ -316,9 +351,9 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-400 mb-1">Trade Type</label>
-            <select id="txType" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white font-semibold">
-              <option value="BUY">BUY</option>
-              <option value="SELL">SELL</option>
+            <select id="txType" onchange="toggleSellLotSelector(this.value)" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white font-semibold">
+              <option value="BUY">BUY (New Lot)</option>
+              <option value="SELL">SELL (Lot-Based)</option>
             </select>
           </div>
           <div>
@@ -326,19 +361,29 @@
             <input id="txDate" type="date" required class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
           </div>
         </div>
+
+        <!-- Lot Selector for SELL trades -->
+        <div id="sellLotContainer" class="hidden space-y-1 bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+          <label class="block text-slate-300 font-semibold mb-1">Select Purchase Lot to Sell From:</label>
+          <select id="txTargetLotId" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs" onchange="onSelectSellLot(this.value)">
+            <option value="">-- Choose active purchase lot --</option>
+          </select>
+          <p id="selectedLotHint" class="text-[11px] text-slate-400 mt-1"></p>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-400 mb-1">Stock Ticker</label>
-            <input id="txTicker" type="text" required placeholder="e.g. AAPL, INFY" oninput="autofillStockDetails(this.value)" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white uppercase" />
+            <input id="txTicker" type="text" required placeholder="e.g. RELIANCE" oninput="autofillStockDetails(this.value)" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white uppercase" />
           </div>
           <div>
             <label class="block text-slate-400 mb-1">Sector</label>
-            <input id="txSector" type="text" placeholder="e.g. Technology" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
+            <input id="txSector" type="text" placeholder="e.g. Energy" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
           </div>
         </div>
         <div>
           <label class="block text-slate-400 mb-1">Company Name</label>
-          <input id="txName" type="text" required placeholder="e.g. Apple Inc." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
+          <input id="txName" type="text" required placeholder="e.g. Reliance Industries Ltd." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white" />
         </div>
         <div class="grid grid-cols-3 gap-3">
           <div>
@@ -346,8 +391,8 @@
             <input id="txQty" type="number" step="any" min="0.0001" required placeholder="10" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white mono" />
           </div>
           <div>
-            <label class="block text-slate-400 mb-1">Trade Price</label>
-            <input id="txPrice" type="number" step="any" min="0.01" required placeholder="150.00" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white mono" />
+            <label class="block text-slate-400 mb-1" id="priceLabelText">Trade Price</label>
+            <input id="txPrice" type="number" step="any" min="0.01" required placeholder="1500.00" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white mono" />
           </div>
           <div>
             <label class="block text-slate-400 mb-1">Current CMP</label>
@@ -399,15 +444,15 @@
   <div id="ownerModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="card max-w-sm w-full p-6 border border-slate-700">
       <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-        <h3 class="text-base font-bold text-white"><i class="fa-solid fa-shield-halved text-blue-400 mr-2"></i>Owner Portfolio Access</h3>
+        <h3 class="text-base font-bold text-white"><i class="fa-solid fa-shield-halved text-blue-400 mr-2"></i>Owner Sheet Unlock</h3>
         <button onclick="closeOwnerModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <p class="text-xs text-slate-400 mt-3">
-        Public visitors see dummy data by default. Enter your passkey to unlock and sync your hardcoded Google Sheet.
+        Enter your Owner passkey (`123`) to unlock and sync your personal sheet.
       </p>
       <div class="mt-4">
         <label class="block text-xs text-slate-300 mb-1">Owner Passkey</label>
-        <input id="modalOwnerKeyInput" type="password" placeholder="Enter OWNER_SECRET..." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500" />
+        <input id="modalOwnerKeyInput" type="password" placeholder="Enter passkey (123)..." class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-blue-500" />
       </div>
       <div class="mt-5 flex justify-end gap-2">
         <button onclick="closeOwnerModal()" class="px-3.5 py-1.5 rounded-lg text-xs bg-slate-800 text-slate-300">Cancel</button>
@@ -421,54 +466,108 @@
 
   <script>
     // ============================================================================
-    // 1. HARDCODED OWNER GOOGLE APPS SCRIPT WEB APP URL
-    // Replace the URL below with your own deployed Google Apps Script URL:
+    // 1. HARDCODED OWNER URL & DEFAULT PRECONFIGURED USER URL
     // ============================================================================
     const OWNER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyJdRhNmdsOUSW4-cgoiKqjy7o_ynO-RVzsTO8W8z4lpl9XOP9wk3LTBBi7Rkx3CHM/exec";
+    const DEFAULT_PRECONFIGURED_URL = "https://script.google.com/macros/s/AKfycby-dPD-drDUhIV2Fbbu0zwiSid7dxPcnMr_uahoyiOfJdKfY4eLVyCw-uYcyjc3PjaW/exec";
 
-    // Default sandbox transactions shown to public visitors
     const DEFAULT_DUMMY_TRANSACTIONS = [
-      { id: 'DEMO-1', date: '2025-01-15', ticker: 'RELIANCE', name: 'Reliance Industries Ltd.', sector: 'Energy', type: 'BUY', qty: 25, price: 1240.50, cmp: 1315.00, notes: 'Core conglomerate hold' },
-      { id: 'DEMO-2', date: '2025-02-10', ticker: 'TCS', name: 'Tata Consultancy Services', sector: 'IT', type: 'BUY', qty: 15, price: 3850.00, cmp: 4120.00, notes: 'Long-term IT compounder' },
-      { id: 'DEMO-3', date: '2025-03-05', ticker: 'TCS', name: 'Tata Consultancy Services', sector: 'IT', type: 'SELL', qty: 5, price: 4050.00, cmp: 4120.00, notes: 'Partial profit booking' },
-      { id: 'DEMO-4', date: '2025-03-18', ticker: 'HDFCBANK', name: 'HDFC Bank Ltd.', sector: 'Banking', type: 'BUY', qty: 40, price: 1620.00, cmp: 1745.00, notes: 'Private banking leader' },
-      { id: 'DEMO-5', date: '2025-04-02', ticker: 'INFY', name: 'Infosys Ltd.', sector: 'IT', type: 'BUY', qty: 30, price: 1540.00, cmp: 1685.40, notes: 'Dividend + IT recovery play' }
+      { id: 'DEMO-1', date: '2025-01-15', ticker: 'RELIANCE', name: 'Reliance Industries Ltd.', sector: 'Energy', type: 'BUY', qty: 25, price: 1240.50, cmp: 1315.00, target_pct: 10, notes: 'Core conglomerate hold' },
+      { id: 'DEMO-2', date: '2025-02-10', ticker: 'TCS', name: 'Tata Consultancy Services', sector: 'IT', type: 'BUY', qty: 15, price: 3850.00, cmp: 4120.00, target_pct: 12, notes: 'Long-term IT compounder' },
+      { id: 'DEMO-3', date: '2025-03-05', ticker: 'TCS', name: 'Tata Consultancy Services', sector: 'IT', type: 'SELL', qty: 5, price: 4050.00, cmp: 4120.00, target_pct: 10, notes: 'Partial profit booking' },
+      { id: 'DEMO-4', date: '2025-03-18', ticker: 'HDFCBANK', name: 'HDFC Bank Ltd.', sector: 'Banking', type: 'BUY', qty: 40, price: 1620.00, cmp: 1745.00, target_pct: 15, notes: 'Private banking leader' }
     ];
 
-    // Safe Storage Wrapper (prevents crash if Google Sites iframe blocks localStorage)
+    // Safe Storage Wrapper
     const SafeStorage = {
-      get(key) {
-        try { return localStorage.getItem(key); } catch (e) { return null; }
-      },
-      set(key, val) {
-        try { localStorage.setItem(key, val); } catch (e) {}
-      },
-      remove(key) {
-        try { localStorage.removeItem(key); } catch (e) {}
-      }
+      get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+      set(key, val) { try { localStorage.setItem(key, val); } catch (e) {} },
+      remove(key) { try { localStorage.removeItem(key); } catch (e) {} }
     };
 
-    // App State
-    // mode: 'DUMMY' (default for visitors) | 'OWNER' (your sheet) | 'CUSTOM' (visitor's own sheet)
+    // Active App State
     let state = {
       mode: SafeStorage.get('folio_mode') || 'DUMMY',
       ownerKey: SafeStorage.get('folio_owner_key') || '',
-      customUrl: SafeStorage.get('folio_custom_url') || '',
-      customKey: SafeStorage.get('folio_custom_key') || '',
+      scriptUrl: SafeStorage.get('folio_script_url') || DEFAULT_PRECONFIGURED_URL,
+      scriptKey: SafeStorage.get('folio_script_key') || '',
       transactions: [],
-      cmpMap: {}
+      cmpMap: {},
+      targetMap: {}, 
+      lotSortOrder: 'ASC', 
+      selectedLotTicker: 'ALL' 
     };
 
     let allocationChartInstance = null;
     let comparisonChartInstance = null;
 
     // ============================================================================
-    // 2. STRICT DATA SANITIZER (Fixes "undefined" or NaN issues after Sheet Sync)
+    // 2. INITIALIZATION & ROUTING
+    // ============================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('customScriptUrlInput').value = state.scriptUrl;
+      document.getElementById('customScriptKeyInput').value = state.scriptKey;
+
+      const savedTargets = SafeStorage.get('folio_lot_targets');
+      if (savedTargets) {
+        try { state.targetMap = JSON.parse(savedTargets); } catch(e) {}
+      }
+
+      if (state.mode === 'OWNER' && state.ownerKey) {
+        syncFromSheet(OWNER_SCRIPT_URL, state.ownerKey, 'OWNER');
+      } else if (state.mode === 'SYNC' && state.scriptUrl) {
+        syncFromSheet(state.scriptUrl, state.scriptKey, 'SYNC');
+      } else {
+        loadDummyData();
+      }
+    });
+
+    function loadDummyData() {
+      state.mode = 'DUMMY';
+      SafeStorage.set('folio_mode', 'DUMMY');
+
+      const savedDummy = SafeStorage.get('folio_dummy_tx');
+      let rawList = DEFAULT_DUMMY_TRANSACTIONS;
+      if (savedDummy) {
+        try {
+          const parsed = JSON.parse(savedDummy);
+          if (Array.isArray(parsed) && parsed.length > 0) rawList = parsed;
+        } catch (e) { rawList = DEFAULT_DUMMY_TRANSACTIONS; }
+      }
+
+      state.transactions = rawList.map((r, i) => sanitizeTransaction(r, i)).filter(Boolean);
+      state.cmpMap = {};
+      state.transactions.forEach(t => { 
+        state.cmpMap[t.ticker] = t.cmp || t.price; 
+        if (t.target_pct !== undefined) {
+          state.targetMap[t.id] = t.target_pct;
+        }
+      });
+
+      updateHeaderUI('DUMMY', 'Viewing sandbox dummy portfolio');
+      renderAll();
+    }
+
+    function resetDummyData() {
+      SafeStorage.remove('folio_dummy_tx');
+      SafeStorage.remove('folio_lot_targets');
+      state.targetMap = {};
+      loadDummyData();
+      showToast('Demo portfolio reset to default', 'info');
+    }
+
+    function activateDummyMode() {
+      loadDummyData();
+      showToast('Switched to Demo Mode', 'info');
+    }
+
+    // ============================================================================
+    // 3. STRICT DATA SANITIZER
     // ============================================================================
     function sanitizeTransaction(raw, index = 0) {
       if (!raw || typeof raw !== 'object') return null;
 
-      // Support any casing from Google Sheets headers
       const rawTicker = raw.ticker ?? raw.Ticker ?? raw.TICKER ?? raw.symbol ?? raw.Symbol ?? raw.stock ?? '';
       const ticker = String(rawTicker).toUpperCase().trim();
       if (!ticker || ticker === 'UNDEFINED') return null;
@@ -477,6 +576,7 @@
       const price = parseFloat(String(raw.price ?? raw.Price ?? raw.rate ?? raw.Rate ?? 0).replace(/[^0-9.-]/g, '')) || 0;
       const rawCmp = parseFloat(String(raw.cmp ?? raw.CMP ?? raw.ltp ?? price).replace(/[^0-9.-]/g, ''));
       const cmp = (!isNaN(rawCmp) && rawCmp > 0) ? rawCmp : price;
+      const targetPct = parseFloat(String(raw.target_pct ?? raw.Target_Pct ?? 10).replace(/[^0-9.-]/g, '')) || 10;
 
       const rawType = String(raw.type ?? raw.Type ?? raw.action ?? 'BUY').toUpperCase().trim();
       const type = rawType === 'SELL' ? 'SELL' : 'BUY';
@@ -494,68 +594,17 @@
         qty: qty,
         price: price,
         cmp: cmp,
+        target_pct: targetPct,
         notes: String(raw.notes ?? raw.Notes ?? raw.remarks ?? '').trim()
       };
     }
 
     // ============================================================================
-    // 3. INITIALIZATION & ROUTING BETWEEN MODES
-    // ============================================================================
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
-      document.getElementById('customScriptUrlInput').value = state.customUrl;
-      document.getElementById('customScriptKeyInput').value = state.customKey;
-      document.getElementById('settingsOwnerKeyInput').value = state.ownerKey;
-
-      // Always verify mode integrity on load
-      if (state.mode === 'OWNER' && state.ownerKey) {
-        syncFromSheet(OWNER_SCRIPT_URL, state.ownerKey, 'OWNER');
-      } else if (state.mode === 'CUSTOM' && state.customUrl) {
-        syncFromSheet(state.customUrl, state.customKey, 'CUSTOM');
-      } else {
-        loadDummyData();
-      }
-    });
-
-    function loadDummyData() {
-      state.mode = 'DUMMY';
-      SafeStorage.set('folio_mode', 'DUMMY');
-
-      const savedDummy = SafeStorage.get('folio_dummy_tx');
-      let rawList = DEFAULT_DUMMY_TRANSACTIONS;
-      if (savedDummy) {
-        try { rawList = JSON.parse(savedDummy); } catch (e) { rawList = DEFAULT_DUMMY_TRANSACTIONS; }
-      }
-
-      state.transactions = rawList.map((r, i) => sanitizeTransaction(r, i)).filter(Boolean);
-      state.cmpMap = {};
-      state.transactions.forEach(t => { state.cmpMap[t.ticker] = t.cmp || t.price; });
-
-      updateHeaderUI('DUMMY', 'Viewing sandbox dummy portfolio (Safe for public visitors)');
-      renderAll();
-    }
-
-    function resetDummyData() {
-      SafeStorage.remove('folio_dummy_tx');
-      loadDummyData();
-      showToast('Demo portfolio reset to default sample trades', 'info');
-    }
-
-    function activateDummyMode() {
-      loadDummyData();
-      showToast('Switched to Public Demo Mode', 'info');
-    }
-
-    // ============================================================================
-    // 4. GOOGLE SHEET SYNC (GET & POST WITH CACHE-BUSTING)
+    // 4. GOOGLE SHEET SYNC (GET & POST)
     // ============================================================================
     function getActiveEndpoint() {
-      if (state.mode === 'OWNER') {
-        return { url: OWNER_SCRIPT_URL, key: state.ownerKey };
-      }
-      if (state.mode === 'CUSTOM') {
-        return { url: state.customUrl, key: state.customKey };
-      }
+      if (state.mode === 'OWNER') return { url: OWNER_SCRIPT_URL, key: state.ownerKey };
+      if (state.mode === 'SYNC') return { url: state.scriptUrl, key: state.scriptKey };
       return null;
     }
 
@@ -572,18 +621,17 @@
     }
 
     async function syncFromSheet(scriptUrl, secretKey, targetMode) {
-      if (!scriptUrl || scriptUrl.includes('YOUR_DEPLOYED_SCRIPT_ID')) {
-        showToast('Owner Script URL not replaced in index.html yet! Showing Demo Data.', 'error');
+      if (!scriptUrl) {
+        showToast('Script URL not provided! Showing Demo Data.', 'error');
         loadDummyData();
         return;
       }
 
       const syncIcon = document.getElementById('syncIcon');
       syncIcon.classList.add('fa-spin');
-      updateHeaderUI(targetMode, 'Syncing live records from Google Sheet...');
+      updateHeaderUI(targetMode, 'Syncing from Google Sheet...');
 
       try {
-        // Cache-busting query string (?t=...) prevents Google Sites from serving stale data
         const sep = scriptUrl.includes('?') ? '&' : '?';
         const fetchUrl = `${scriptUrl}${sep}key=${encodeURIComponent(secretKey || '')}&t=${Date.now()}`;
 
@@ -591,7 +639,7 @@
         const result = await response.json();
 
         if (result && result.status === 'unauthorized') {
-          showToast('Invalid Owner Passkey! Reverting to Public Demo Data.', 'error');
+          showToast('Invalid Password or Passkey! Reverting to Demo Data.', 'error');
           logoutOwner();
           return;
         }
@@ -606,15 +654,18 @@
         state.cmpMap = {};
         cleanRows.forEach(t => {
           state.cmpMap[t.ticker] = t.cmp > 0 ? t.cmp : t.price;
+          if (t.target_pct !== undefined) {
+            state.targetMap[t.id] = t.target_pct;
+          }
         });
 
-        updateHeaderUI(targetMode, `Synced ${cleanRows.length} records from Google Sheet`);
+        updateHeaderUI(targetMode, `Synced ${cleanRows.length} records`);
         renderAll();
         showToast(`Synced ${cleanRows.length} records successfully`, 'success');
       } catch (err) {
         console.error('Sheet Sync Error:', err);
-        showToast('Could not reach Google Sheet. Check Web App URL & "Anyone" permissions.', 'error');
-        updateHeaderUI(targetMode, 'Sync error — check connection');
+        showToast('Could not reach Google Sheet. Check URL & permissions.', 'error');
+        updateHeaderUI(targetMode, 'Sync error');
       } finally {
         syncIcon.classList.remove('fa-spin');
       }
@@ -625,7 +676,6 @@
       if (!ep || !ep.url) return false;
 
       const bodyData = JSON.stringify({ ...payload, key: ep.key || '' });
-      // Using text/plain prevents CORS preflight failure on Google Apps Script
       const response = await fetch(ep.url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -634,13 +684,13 @@
       });
       const resJson = await response.json();
       if (resJson.status === 'unauthorized') {
-        throw new Error('Unauthorized Passkey');
+        throw new Error('Unauthorized Password/Passkey');
       }
       return resJson.status === 'success';
     }
 
     // ============================================================================
-    // 5. OWNER & CUSTOM USER AUTHENTICATION HANDLERS
+    // 5. AUTHENTICATION HANDLERS
     // ============================================================================
     function openOwnerModal() {
       document.getElementById('modalOwnerKeyInput').value = state.ownerKey;
@@ -655,48 +705,46 @@
 
     function unlockOwnerFromModal() {
       const key = document.getElementById('modalOwnerKeyInput').value.trim();
-      if (!key) {
-        showToast('Please enter your Owner Passkey', 'error');
-        return;
-      }
+      if (!key) { showToast('Please enter passkey', 'error'); return; }
       state.ownerKey = key;
       SafeStorage.set('folio_owner_key', key);
-      document.getElementById('settingsOwnerKeyInput').value = key;
       closeOwnerModal();
       syncFromSheet(OWNER_SCRIPT_URL, key, 'OWNER');
-    }
-
-    function unlockOwnerFromSettings() {
-      const key = document.getElementById('settingsOwnerKeyInput').value.trim();
-      if (!key) {
-        showToast('Please enter your Owner Passkey', 'error');
-        return;
-      }
-      state.ownerKey = key;
-      SafeStorage.set('folio_owner_key', key);
-      syncFromSheet(OWNER_SCRIPT_URL, key, 'OWNER');
-    }
-
-    function logoutOwner() {
-      state.ownerKey = '';
-      SafeStorage.remove('folio_owner_key');
-      document.getElementById('settingsOwnerKeyInput').value = '';
-      loadDummyData();
-      showToast('Owner logged out. Showing public demo data.', 'info');
     }
 
     function connectCustomUserSheet() {
       const url = document.getElementById('customScriptUrlInput').value.trim();
       const key = document.getElementById('customScriptKeyInput').value.trim();
-      if (!url || !url.startsWith('https://script.google.com')) {
-        showToast('Please enter a valid Google Apps Script Web App URL', 'error');
+      
+      if (!url) {
+        showToast('Please enter a valid Google Apps Script URL', 'error');
         return;
       }
-      state.customUrl = url;
-      state.customKey = key;
-      SafeStorage.set('folio_custom_url', url);
-      SafeStorage.set('folio_custom_key', key);
-      syncFromSheet(url, key, 'CUSTOM');
+      if (!url.startsWith('https://script.google.com')) {
+        showToast('Invalid Google Apps Script URL format', 'error');
+        return;
+      }
+
+      state.scriptUrl = url;
+      state.scriptKey = key;
+      SafeStorage.set('folio_script_url', url);
+      SafeStorage.set('folio_script_key', key);
+      syncFromSheet(url, key, 'SYNC');
+    }
+
+    function clearCustomUrl() {
+      document.getElementById('customScriptUrlInput').value = '';
+      showToast('URL cleared. You can now enter a custom URL.', 'info');
+    }
+
+    function logoutOwner() {
+      state.ownerKey = '';
+      state.scriptKey = '';
+      SafeStorage.remove('folio_owner_key');
+      SafeStorage.remove('folio_script_key');
+      document.getElementById('customScriptKeyInput').value = '';
+      loadDummyData();
+      showToast('Disconnected. Showing demo data.', 'info');
     }
 
     function updateHeaderUI(mode, statusText) {
@@ -707,16 +755,11 @@
 
       statusEl.textContent = statusText;
 
-      if (mode === 'OWNER') {
+      if (mode === 'OWNER' || mode === 'SYNC') {
         badge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30';
-        badge.textContent = 'Owner Live Sheet';
+        badge.textContent = mode === 'OWNER' ? 'Owner Sheet Unlocked' : 'Sheet Synced (Live)';
         lockIcon.className = 'fa-solid fa-lock-open text-emerald-400';
-        ownerBtnText.textContent = 'Owner Unlocked';
-      } else if (mode === 'CUSTOM') {
-        badge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-        badge.textContent = 'Custom User Sheet';
-        lockIcon.className = 'fa-solid fa-lock text-amber-400';
-        ownerBtnText.textContent = 'Owner Login';
+        ownerBtnText.textContent = 'Connected';
       } else {
         badge.className = 'text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30';
         badge.textContent = 'Public Demo Data';
@@ -726,54 +769,98 @@
     }
 
     // ============================================================================
-    // 6. PORTFOLIO ENGINE (AVERAGE COST, REALIZED & UNREALIZED P&L)
+    // 6. LOT-BASED PORTFOLIO & P&L ENGINE
     // ============================================================================
-    function calculatePortfolio() {
-      const holdingsMap = {};
-      // Sort chronologically so average buy price is accurate on sell trades
+    function computeLotLedger() {
       const sortedTx = [...state.transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      let lots = [];
+      let stockRealizedPnLMap = {};
 
       sortedTx.forEach(tx => {
         const t = sanitizeTransaction(tx);
         if (!t) return;
 
-        if (!holdingsMap[t.ticker]) {
-          holdingsMap[t.ticker] = {
+        if (t.type === 'BUY') {
+          lots.push({
+            lotId: t.id,
+            date: t.date,
             ticker: t.ticker,
             name: t.name,
             sector: t.sector,
+            originalQty: t.qty,
+            remainingQty: t.qty,
+            buyPrice: t.price,
+            targetPct: state.targetMap[t.id] !== undefined ? state.targetMap[t.id] : t.target_pct,
+            notes: t.notes,
+            sales: []
+          });
+        } else if (t.type === 'SELL') {
+          let targetLot = null;
+          if (t.notes && t.notes.includes('Lot:')) {
+            const lotIdMatch = t.notes.match(/Lot:([a-zA-Z0-9-_]+)/);
+            if (lotIdMatch) {
+              targetLot = lots.find(l => l.lotId === lotIdMatch[1] && l.remainingQty > 0);
+            }
+          }
+          if (!targetLot) {
+            targetLot = lots.find(l => l.ticker === t.ticker && l.remainingQty > 0);
+          }
+
+          if (targetLot) {
+            const soldFromThisLot = Math.min(t.qty, targetLot.remainingQty);
+            targetLot.remainingQty -= soldFromThisLot;
+
+            const realized = (t.price - targetLot.buyPrice) * soldFromThisLot;
+            targetLot.sales.push({
+              sellDate: t.date,
+              soldQty: soldFromThisLot,
+              sellPrice: t.price,
+              realizedPnL: realized
+            });
+
+            stockRealizedPnLMap[t.ticker] = (stockRealizedPnLMap[t.ticker] || 0) + realized;
+          }
+        }
+      });
+
+      return { lots, stockRealizedPnLMap };
+    }
+
+    function calculatePortfolio() {
+      const { lots, stockRealizedPnLMap } = computeLotLedger();
+      const holdingsMap = {};
+
+      lots.forEach(l => {
+        if (!holdingsMap[l.ticker]) {
+          holdingsMap[l.ticker] = {
+            ticker: l.ticker,
+            name: l.name,
+            sector: l.sector,
             boughtQty: 0,
             soldQty: 0,
             netQty: 0,
             totalCostPool: 0,
             avgBuyPrice: 0,
-            realizedPnL: 0,
-            cmp: state.cmpMap[t.ticker] || t.cmp || t.price,
-            records: []
+            realizedPnL: stockRealizedPnLMap[l.ticker] || 0,
+            cmp: state.cmpMap[l.ticker] || l.buyPrice,
+            records: [],
+            lots: []
           };
         }
 
-        const h = holdingsMap[t.ticker];
-        h.name = t.name || h.name;
-        h.sector = t.sector || h.sector;
-        h.records.push(t);
-
-        if (t.type === 'BUY') {
-          h.boughtQty += t.qty;
-          h.netQty += t.qty;
-          h.totalCostPool += (t.qty * t.price);
-          h.avgBuyPrice = h.netQty > 0 ? (h.totalCostPool / h.netQty) : 0;
-        } else if (t.type === 'SELL') {
-          const sellQty = Math.min(t.qty, h.netQty > 0 ? h.netQty : t.qty);
-          const costBasis = sellQty * h.avgBuyPrice;
-          h.realizedPnL += (t.qty * t.price) - costBasis;
-          h.soldQty += t.qty;
-          h.netQty = Math.max(0, h.netQty - t.qty);
-          h.totalCostPool = h.netQty * h.avgBuyPrice;
-        }
+        const h = holdingsMap[l.ticker];
+        h.lots.push(l);
+        h.boughtQty += l.originalQty;
+        
+        const soldFromLot = l.originalQty - l.remainingQty;
+        h.soldQty += soldFromLot;
+        h.netQty += l.remainingQty;
+        h.totalCostPool += (l.remainingQty * l.buyPrice);
       });
 
       const holdings = Object.values(holdingsMap).map(h => {
+        h.avgBuyPrice = h.netQty > 0 ? (h.totalCostPool / h.netQty) : 0;
         const cmp = state.cmpMap[h.ticker] ?? h.cmp ?? h.avgBuyPrice;
         const invested = h.netQty * h.avgBuyPrice;
         const currentValue = h.netQty * cmp;
@@ -785,12 +872,60 @@
       return holdings;
     }
 
+    async function updateLotTarget(lotId, val) {
+      const pct = parseFloat(val);
+      if (isNaN(pct)) return;
+      state.targetMap[lotId] = pct;
+      SafeStorage.set('folio_lot_targets', JSON.stringify(state.targetMap));
+
+      const targetPriceEl = document.getElementById(`target-price-${lotId}`);
+      const targetProfitEl = document.getElementById(`target-profit-${lotId}`);
+      const buyPriceEl = document.getElementById(`buy-price-${lotId}`);
+      const remQtyEl = document.getElementById(`rem-qty-${lotId}`);
+
+      if (targetPriceEl && buyPriceEl) {
+        const buyPrice = parseFloat(buyPriceEl.getAttribute('data-price') || 0);
+        const remQty = parseFloat(remQtyEl ? remQtyEl.getAttribute('data-qty') : 0);
+        
+        const calculatedTarget = buyPrice * (1 + (pct / 100));
+        const calculatedProfit = (calculatedTarget - buyPrice) * remQty;
+
+        targetPriceEl.textContent = fmtMoney(calculatedTarget);
+        if (targetProfitEl) targetProfitEl.textContent = fmtMoney(calculatedProfit);
+      }
+
+      if (state.mode === 'SYNC' || state.mode === 'OWNER') {
+        try {
+          await postToSheet({ action: 'UPDATE_TARGET', id: lotId, target_pct: pct });
+        } catch (e) {
+          console.error('Failed to sync target to sheet', e);
+        }
+      }
+    }
+
+    function toggleLotSort() {
+      state.lotSortOrder = state.lotSortOrder === 'ASC' ? 'DESC' : 'ASC';
+      const btnLabel = document.getElementById('lotSortLabel');
+      const btnIcon = document.querySelector('#lotSortBtn i');
+      if (state.lotSortOrder === 'ASC') {
+        btnLabel.textContent = 'Ticker: A-Z';
+        btnIcon.className = 'fa-solid fa-arrow-down-a-z text-blue-400';
+      } else {
+        btnLabel.textContent = 'Ticker: Z-A';
+        btnIcon.className = 'fa-solid fa-arrow-up-z-a text-blue-400';
+      }
+      renderLotsTable();
+    }
+
     // ============================================================================
-    // 7. ADD / DELETE TRANSACTIONS & CMP UPDATES
+    // 7. ADD / DELETE TRANSACTIONS & LOT SELLING WIZARD
     // ============================================================================
     function openTransactionModal(prefillTicker = '') {
       document.getElementById('txForm').reset();
       document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('txType').value = 'BUY';
+      toggleSellLotSelector('BUY');
+
       if (prefillTicker) {
         document.getElementById('txTicker').value = prefillTicker;
         autofillStockDetails(prefillTicker);
@@ -802,6 +937,40 @@
     function closeTransactionModal() {
       document.getElementById('txModal').classList.add('hidden');
       document.getElementById('txModal').classList.remove('flex');
+    }
+
+    function toggleSellLotSelector(type) {
+      const container = document.getElementById('sellLotContainer');
+      const priceLabel = document.getElementById('priceLabelText');
+      const selectLot = document.getElementById('txTargetLotId');
+
+      if (type === 'SELL') {
+        container.classList.remove('hidden');
+        priceLabel.textContent = 'Selling Price';
+        
+        const { lots } = computeLotLedger();
+        const activeLots = lots.filter(l => l.remainingQty > 0);
+
+        selectLot.innerHTML = '<option value="">-- Choose active purchase lot --</option>' +
+          activeLots.map(l => `<option value="${l.lotId}">${l.ticker} — Lot Date: ${l.date} | Avail Qty: ${l.remainingQty} @ ₹${l.buyPrice}</option>`).join('');
+      } else {
+        container.classList.add('hidden');
+        priceLabel.textContent = 'Trade Price';
+      }
+    }
+
+    function onSelectSellLot(lotId) {
+      const { lots } = computeLotLedger();
+      const lot = lots.find(l => l.lotId === lotId);
+      if (lot) {
+        document.getElementById('txTicker').value = lot.ticker;
+        document.getElementById('txName').value = lot.name;
+        document.getElementById('txSector').value = lot.sector;
+        document.getElementById('txQty').max = lot.remainingQty;
+        document.getElementById('txQty').value = lot.remainingQty;
+        document.getElementById('txPrice').value = state.cmpMap[lot.ticker] || lot.buyPrice;
+        document.getElementById('selectedLotHint').textContent = `Selected Lot: Bought ${lot.originalQty} shares on ${lot.date} @ ₹${lot.buyPrice}. Max available to sell: ${lot.remainingQty}`;
+      }
     }
 
     function autofillStockDetails(tickerInput) {
@@ -816,27 +985,48 @@
 
     async function handleSaveTransaction(e) {
       e.preventDefault();
+
+      const dateVal = document.getElementById('txDate').value;
+      if (!dateVal) {
+        showToast('Please select a valid transaction date.', 'error');
+        return;
+      }
+
+      const txType = document.getElementById('txType').value;
+      let notes = document.getElementById('txNotes').value;
+
+      if (txType === 'SELL') {
+        const targetLotId = document.getElementById('txTargetLotId').value;
+        if (!targetLotId) {
+          showToast('Please select a specific purchase lot to sell from.', 'error');
+          return;
+        }
+        notes = `Lot:${targetLotId}` + (notes ? ` | ${notes}` : '');
+      }
+
       const newTx = sanitizeTransaction({
         id: 'TX-' + Date.now(),
-        type: document.getElementById('txType').value,
-        date: document.getElementById('txDate').value,
+        type: txType,
+        date: dateVal,
         ticker: document.getElementById('txTicker').value,
         name: document.getElementById('txName').value,
         sector: document.getElementById('txSector').value || 'Other',
         qty: document.getElementById('txQty').value,
         price: document.getElementById('txPrice').value,
         cmp: document.getElementById('txCmp').value || 0,
-        notes: document.getElementById('txNotes').value
+        target_pct: 10,
+        notes: notes
       });
 
-      // Validate SELL quantity against current holdings
       if (newTx.type === 'SELL') {
-        const holdings = calculatePortfolio();
-        const existing = holdings.find(h => h.ticker === newTx.ticker);
-        const available = existing ? existing.netQty : 0;
-        if (newTx.qty > available) {
-          showToast(`Cannot sell ${newTx.qty} shares of ${newTx.ticker}. You only hold ${available}.`, 'error');
-          return;
+        const lotIdMatch = newTx.notes.match(/Lot:([a-zA-Z0-9-_]+)/);
+        if (lotIdMatch) {
+          const { lots } = computeLotLedger();
+          const lot = lots.find(l => l.lotId === lotIdMatch[1]);
+          if (lot && newTx.qty > lot.remainingQty) {
+            showToast(`Cannot sell ${newTx.qty}. Selected lot only has ${lot.remainingQty} shares remaining.`, 'error');
+            return;
+          }
         }
       }
 
@@ -852,15 +1042,14 @@
           SafeStorage.set('folio_dummy_tx', JSON.stringify(state.transactions));
           renderAll();
           closeTransactionModal();
-          showToast('Trade added to Demo Portfolio', 'success');
+          showToast('Trade saved to Demo Portfolio', 'success');
         } else {
           await postToSheet({ action: 'ADD', transaction: newTx });
           closeTransactionModal();
-          // Re-sync directly from Sheet so state is 100% consistent
           await syncActiveSource();
         }
       } catch (err) {
-        showToast('Failed to save to Google Sheet: ' + err.message, 'error');
+        showToast('Failed to save trade: ' + err.message, 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Save Transaction';
@@ -878,7 +1067,7 @@
         showToast('Record deleted from Demo Portfolio', 'info');
       } else {
         try {
-          showToast('Deleting record from Google Sheet...', 'info');
+          showToast('Deleting from Google Sheet...', 'info');
           await postToSheet({ action: 'DELETE', id: id });
           closeStockHistoryModal();
           await syncActiveSource();
@@ -904,15 +1093,15 @@
         renderAll();
         try {
           await postToSheet({ action: 'UPDATE_CMP', ticker, cmp: newCmp });
-          showToast(`Updated ${ticker} CMP in Google Sheet`, 'success');
+          showToast(`Updated ${ticker} CMP in Sheet`, 'success');
         } catch (e) {
-          showToast('Updated locally, but Sheet sync failed', 'error');
+          showToast('Updated locally, sheet sync failed', 'error');
         }
       }
     }
 
     // ============================================================================
-    // 8. RENDERING TABLES, CHARTS & DRILLDOWN MODAL
+    // 8. RENDERING TABLES, CHARTS & LOT TRACKING VIEW
     // ============================================================================
     function fmtMoney(n) {
       const val = Number(n) || 0;
@@ -953,6 +1142,8 @@
 
       renderDashboardTable(holdings);
       renderFullHoldingsTable(holdings);
+      updateLotStockFilterOptions();
+      renderLotsTable();
       renderTransactionsTable();
       renderCharts(activeHoldings);
     }
@@ -1023,11 +1214,87 @@
           </td>
           <td class="py-3 px-3 text-center">
             <button onclick="openStockHistoryModal('${h.ticker}')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white text-[11px] transition">
-              Records (${h.records.length})
+              Records (${h.lots.length})
             </button>
           </td>
         </tr>
       `).join('');
+    }
+
+    function updateLotStockFilterOptions() {
+      const { lots } = computeLotLedger();
+      const uniqueTickers = [...new Set(lots.map(l => l.ticker))].sort();
+      const selectEl = document.getElementById('lotStockFilter');
+      if (!selectEl) return;
+
+      const currentVal = selectEl.value || 'ALL';
+      selectEl.innerHTML = '<option value="ALL">All Stocks</option>' +
+        uniqueTickers.map(t => `<option value="${t}">${t}</option>`).join('');
+      
+      if (uniqueTickers.includes(currentVal) || currentVal === 'ALL') {
+        selectEl.value = currentVal;
+      }
+    }
+
+    function renderLotsTable() {
+      const { lots } = computeLotLedger();
+      const filterEl = document.getElementById('lotStockFilter');
+      state.selectedLotTicker = filterEl ? filterEl.value : 'ALL';
+
+      let filteredLots = lots.filter(l => {
+        if (state.selectedLotTicker === 'ALL') return true;
+        return l.ticker === state.selectedLotTicker;
+      });
+
+      filteredLots.sort((a, b) => {
+        if (a.ticker < b.ticker) return state.lotSortOrder === 'ASC' ? -1 : 1;
+        if (a.ticker > b.ticker) return state.lotSortOrder === 'ASC' ? 1 : -1;
+        return a.buyPrice - b.buyPrice; 
+      });
+
+      const tbody = document.getElementById('lotsTableBody');
+      if (!filteredLots.length) {
+        tbody.innerHTML = `<tr><td colspan="12" class="py-6 text-center text-slate-500">No purchase lots found for this selection.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filteredLots.map(l => {
+        const cmp = state.cmpMap[l.ticker] || l.buyPrice;
+        const unrealized = l.remainingQty * (cmp - l.buyPrice);
+        const totalRealized = l.sales.reduce((s, sale) => s + sale.realizedPnL, 0);
+        const isClosed = l.remainingQty === 0;
+
+        const targetPct = state.targetMap[l.lotId] !== undefined ? state.targetMap[l.lotId] : l.targetPct;
+        const targetPrice = l.buyPrice * (1 + (targetPct / 100));
+        const targetProfitAmount = (targetPrice - l.buyPrice) * l.remainingQty;
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition ${isClosed ? 'opacity-60 bg-slate-950/40' : ''}">
+            <td class="py-3 px-3">
+              <div class="font-bold text-white mono">${l.lotId}</div>
+              <div class="text-[11px] text-slate-400">${l.date}</div>
+            </td>
+            <td class="py-3 px-3 font-semibold text-white">${l.ticker}</td>
+            <td class="py-3 px-3 text-right mono">${l.originalQty}</td>
+            <td class="py-3 px-3 text-right mono font-bold ${isClosed ? 'text-slate-500' : 'text-emerald-400'}" id="rem-qty-${l.lotId}" data-qty="${l.remainingQty}">${l.remainingQty}</td>
+            <td class="py-3 px-3 text-right mono" id="buy-price-${l.lotId}" data-price="${l.buyPrice}">${fmtMoney(l.buyPrice)}</td>
+            <td class="py-3 px-3 text-right">
+              <input type="number" step="any" value="${targetPct}" oninput="updateLotTarget('${l.lotId}', this.value)"
+                class="w-16 text-right px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white mono text-xs focus:border-blue-500" />
+            </td>
+            <td class="py-3 px-3 text-right mono font-semibold text-blue-300" id="target-price-${l.lotId}">${fmtMoney(targetPrice)}</td>
+            <td class="py-3 px-3 text-right mono font-semibold text-emerald-400" id="target-profit-${l.lotId}">${fmtMoney(targetProfitAmount)}</td>
+            <td class="py-3 px-3 text-right mono">${fmtMoney(cmp)}</td>
+            <td class="py-3 px-3 text-right mono ${unrealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${fmtMoney(unrealized)}</td>
+            <td class="py-3 px-3 text-right mono ${totalRealized >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${fmtMoney(totalRealized)}</td>
+            <td class="py-3 px-3 text-center">
+              ${isClosed ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400">CLOSED</span>' : 
+                `<button onclick="openTransactionModal('${l.ticker}')" class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] transition">Sell Qty</button>`
+              }
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function renderTransactionsTable() {
@@ -1074,8 +1341,9 @@
       document.getElementById('drilldownTitle').textContent = `${stock.ticker} — ${stock.name}`;
       document.getElementById('drilldownSubtitle').textContent = `Net Qty: ${stock.netQty} | Avg Buy: ${fmtMoney(stock.avgBuyPrice)} | Unrealized: ${fmtMoney(stock.unrealizedPnL)} | Realized: ${fmtMoney(stock.realizedPnL)}`;
 
+      const stockTransactions = state.transactions.filter(t => t.ticker === ticker);
       const tbody = document.getElementById('drilldownBody');
-      tbody.innerHTML = stock.records.map(r => `
+      tbody.innerHTML = stockTransactions.map(r => `
         <tr class="border-b border-slate-800/60">
           <td class="py-2.5 px-3 mono">${r.date}</td>
           <td class="py-2.5 px-3">
@@ -1149,7 +1417,7 @@
 
     // Navigation & Toast Helpers
     function switchTab(tabName) {
-      ['dashboard', 'holdings', 'transactions', 'settings'].forEach(t => {
+      ['dashboard', 'holdings', 'lots', 'transactions', 'settings'].forEach(t => {
         document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tabName);
         document.getElementById(`tab-${t}`).classList.toggle('active', t === tabName);
       });
